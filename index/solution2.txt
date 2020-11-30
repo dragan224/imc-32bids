@@ -1,0 +1,182 @@
+// 74
+package index;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class WorldIndex {
+
+    private static final long GENERATION_TIME = 4960;
+    private static final int STEPS = 5;
+    private static final int MAX_CHARS = 5;
+
+    public String makeName(List<String> inputWithDuplicates) {
+        long start = System.currentTimeMillis();
+
+        Set<String> inputWithoutDuplicates = new HashSet<>(inputWithDuplicates);
+
+        Set<String> input = new HashSet<>();
+
+        for (String word: inputWithoutDuplicates) {
+            boolean found = false;
+            for (String inputWord: input) {
+                if (inputWord.contains(word)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                input.add(word);
+            }
+        }
+
+        Set<Character> charSet = new HashSet<>();
+        for (String word: input) {
+            for (Character c: word.toCharArray()) {
+                charSet.add(c);
+            }
+            if (charSet.size() > MAX_CHARS) break;
+        }
+
+        int bestCount = Integer.MIN_VALUE;
+        String bestStartingWord = null;
+        for (String word1: input) {
+            int count = 0;
+            for (String word2: input) {
+                if (word1.contains(word2)) ++count;
+            }
+            if (count > bestCount || (count == bestCount && bestStartingWord.length() > word1.length())) {
+                bestStartingWord = word1;
+                bestCount = count;
+            }
+        }
+        String solution = makeName(input, bestStartingWord, start, charSet);;
+
+        for (String startingWord: input) {
+            if (System.currentTimeMillis() - start > GENERATION_TIME) break;
+            String candidateSolution = makeName(input, startingWord, start, charSet);
+            if (solution == null || candidateSolution.length() < solution.length()) {
+                solution = candidateSolution;
+            }
+        }
+
+        return solution;
+    }
+
+    private boolean isValid(Set<String> input, String solution) {
+        for (String word: input) {
+            if (!solution.contains(word)) return false;
+        }
+        return true;
+    }
+
+
+    private String makeName(Set<String> input, String startingWord, long start, Set<Character> charSet) {
+        Set<String> wordSet = new HashSet<>(input);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(startingWord);
+
+        while (!wordSet.isEmpty() && System.currentTimeMillis() - start < GENERATION_TIME) {
+            List<String> combinations = new ArrayList<>();
+
+            generateCombinations(combinations, charSet, STEPS);
+
+            String word = null;
+            int maxCount = Integer.MIN_VALUE;
+            for (String combination: combinations) {
+                int count = getCount(safeSubstring(sb) + combination, wordSet);
+                if (count > maxCount || (count == maxCount && combination.length() < word.length())) {
+                    maxCount = count;
+                    word = combination;
+                }
+            }
+
+            sb.append(word);
+            remove(sb.substring(Math.max(0, sb.length() - 10)), wordSet);
+        }
+
+        for (String word: wordSet) {
+            append(sb, word);
+        }
+
+        String solution = sb.toString();
+        while (System.currentTimeMillis() - start < GENERATION_TIME) {
+            boolean found = false;
+
+            for (int len = 2; len >= 1; len--) {
+                for (int i = 0; i < solution.length() - len + 1; i++) {
+                    String candidateSolution = solution.substring(0, i) + solution.substring(i + len);
+                    if (isValid(input, candidateSolution)) {
+                        solution = candidateSolution;
+                        found = true;
+                    }
+                }
+            }
+
+            if (!found) {
+                break;
+            }
+        }
+
+        return solution;
+    }
+
+    private void append(StringBuilder sb, String word) {
+        if (sb.indexOf(word) != -1) return;
+
+        int prefix = 0;
+        for (int i = 1; i <= Math.min(word.length(), sb.length()); i++) {
+            if (sb.substring(sb.length() - i).equals(word.substring(0, i))) {
+                prefix = i;
+            }
+        }
+
+        sb.append(word.substring(prefix));
+    }
+
+    private int getCount(String haystack, Set<String> wordSet) {
+        int count = 0;
+        for (String word: wordSet) {
+            if (haystack.contains(word)) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    private void remove(String haystack, Set<String> wordSet) {
+        for (int i = 0; i < haystack.length(); i++) {
+            for (int j = i + 1; j <= haystack.length(); j++) {
+                String word = haystack.substring(i, j);
+                wordSet.remove(word);
+            }
+        }
+    }
+
+    private void generateCombinations(List<String> combinations, Set<Character> charSet, int len) {
+        for (int i = 1; i <= len; i++) {
+            generateCombinations(combinations, charSet, 0, new char[i]);
+        }
+    }
+
+    private void generateCombinations(List<String> combinations, Set<Character> charSet, int index, char[] arr) {
+        if (index == arr.length) {
+            combinations.add(new String(arr));
+            return;
+        }
+
+        for (Character ch: charSet) {
+            char old = arr[index];
+            arr[index] = ch;
+            generateCombinations(combinations, charSet, index + 1, arr);
+            arr[index] = old;
+        }
+    }
+
+    private String safeSubstring(StringBuilder sb) {
+        return sb.length() == 0 ? "" : sb.substring(Math.max(0, sb.length() - 4));
+    }
+}

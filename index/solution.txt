@@ -1,0 +1,85 @@
+package index;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+
+public class WorldIndex {
+
+    private static final long MAX_TIME = 4975;
+    private static final int SHUFFLE = 500;
+
+    public String makeName(List<String> input) {
+        long start = System.currentTimeMillis();
+
+        Set<String> uniqueInput = new HashSet<>(input);
+        String[] names = new String[uniqueInput.size()];
+        uniqueInput.toArray(names);
+
+        String globalSolution = generateSolution(names);
+
+        while (true) {
+            boolean found = false;
+            String solution = generateSolution(names);
+
+            for (int i = 0; i < names.length; i++) {
+                if (System.currentTimeMillis() - start > MAX_TIME) {
+                    return globalSolution;
+                }
+                for (int j = i + 1; j < names.length; j++) {
+                    swap(names, i, j);
+                    String candidateSolution = generateSolution(names);
+                    if (candidateSolution.length() < solution.length()) {
+                        solution = candidateSolution;
+                        found = true;
+                        if (solution.length() < globalSolution.length()) {
+                            globalSolution = solution;
+                        }
+                    } else {
+                        swap(names, i, j);
+                    }
+                }
+            }
+
+            if (!found) {
+                shuffle(names, SHUFFLE);
+            }
+        }
+    }
+
+    private void shuffle(String[] names, int iter) {
+        while (iter-- > 0) {
+            int i = ThreadLocalRandom.current().nextInt(0, names.length);
+            int j = ThreadLocalRandom.current().nextInt(0, names.length);
+            swap(names, i, j);
+        }
+    }
+
+    private String generateSolution(String[] names) {
+        StringBuilder sb = new StringBuilder();
+        for (String name : names) {
+            append(sb, name);
+        }
+        return sb.toString();
+    }
+
+    private void append(StringBuilder sb, String word) {
+        if (sb.indexOf(word) != -1) return;
+
+        int prefix = 0;
+        for (int i = 1; i <= Math.min(word.length(), sb.length()); i++) {
+            if (sb.substring(sb.length() - i).equals(word.substring(0, i))) {
+                prefix = i;
+            }
+        }
+
+        sb.append(word.substring(prefix));
+    }
+
+    private void swap(String[] names, int from, int to) {
+        String temp = names[from];
+        names[from] = names[to];
+        names[to] = temp;
+    }
+}

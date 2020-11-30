@@ -1,0 +1,45 @@
+// 33.174007
+package path;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class LongPath {
+    public static int SIZE = 200;
+
+    public List<Integer> placeModules(List<Integer> dimensions) {
+        return solveGreedy(dimensions);
+    }
+
+    List<Integer> solveGreedy(List<Integer> dimensions) {
+        int k = 0;
+        List<Integer> output = new ArrayList<>();
+
+        int iter = 0;
+        for (int i = 0; i <= SIZE - 5 && k < dimensions.size(); ) {
+            int maxHeight = 0;
+
+            if (iter++ % 2 == 0) {
+                for (int j = 0; j <= SIZE - 5 && k < dimensions.size(); ) {
+                    output.add(i);
+                    output.add(j);
+                    maxHeight = Math.max(maxHeight, dimensions.get(k));
+                    j += dimensions.get(k + 1);
+                    k += 2;
+                }
+            } else {
+                for (int j = SIZE - 5; j >= 0 && k < dimensions.size(); ) {
+                    output.add(i);
+                    output.add(j);
+                    maxHeight = Math.max(maxHeight, dimensions.get(k));
+                    if (k + 3 < dimensions.size()) {
+                        j -= dimensions.get(k + 3);
+                    }
+                    k += 2;
+                }
+            }
+            i += maxHeight;
+        }
+        return output;
+    }
+}

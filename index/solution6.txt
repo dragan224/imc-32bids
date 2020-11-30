@@ -1,0 +1,165 @@
+// need to optimize
+package index;
+
+import java.util.*;
+
+public class WorldIndex {
+
+    private static final long OPTIMIZER_TIME = 4800000;
+    private static final long SOLUTION_TIME = 47000000;
+
+    private static final int TO_KEEP = 20000;
+    private static final int MAX_SOLUTIONS = 100;
+
+    public String makeName(List<String> inputWithDuplicates) {
+        long start = System.currentTimeMillis();
+        String[] input = cleanInput(inputWithDuplicates);
+        Map<String, Integer> strToIndex = new HashMap<>();
+        for (int i = 0; i < input.length; i++) {
+            strToIndex.put(input[i], i);
+        }
+
+        Set<Character> charSet = new HashSet<>();
+        for (String word: input) {
+            for (Character c: word.toCharArray()) {
+                charSet.add(c);
+            }
+            if (charSet.size() > 5) break;
+        }
+
+        List<Tuple> solutions = new ArrayList<>();
+        solutions.add(new Tuple("", new boolean[input.length], 0));
+
+        List<Tuple> candidates = new ArrayList<>();
+        while (candidates.size() < MAX_SOLUTIONS) {
+
+            List<Tuple> newSolutions = new ArrayList<>();
+            for (Tuple solution: solutions) {
+
+                for (Character ch: charSet) {
+                    boolean[] set = Arrays.copyOf(solution.set, solution.set.length);
+                    String sol = solution.sequence + ch;
+                    Tuple tuple = new Tuple(sol, set, solution.setCount);
+                    tuple.update(strToIndex);
+                    newSolutions.add(tuple);
+                }
+            }
+
+            Collections.sort(newSolutions);
+            solutions = newSolutions.subList(0, Math.min(newSolutions.size(), TO_KEEP));
+
+            for (Tuple tuple: solutions) {
+                if (tuple.setCount  >= input.length) {
+                    candidates.add(tuple);
+                    if (candidates.size() > MAX_SOLUTIONS) break;
+                }
+            }
+        }
+
+        Collections.sort(candidates);
+
+        String solution = null;
+        for (Tuple tuple: candidates) {
+            if (System.currentTimeMillis() - start > SOLUTION_TIME) break;
+
+            String candidateSolution = new Optimizer(tuple.sequence).optimize(input, start);
+            if (solution == null || candidateSolution.length() < solution.length()) {
+                solution = candidateSolution;
+            }
+        }
+
+        System.out.println(solution);
+        return new Optimizer(solution).optimize(input, start);
+    }
+
+    private String[] cleanInput(List<String> inputWithDuplicates) {
+        Set<String> inputWithoutDuplicates = new HashSet<>(inputWithDuplicates);
+        Set<String> input = new HashSet<>();
+        Map<String, Integer> inDegree = new HashMap<>();
+        for (String word1: inputWithoutDuplicates) {
+            for (String word2: inputWithDuplicates) {
+                if (word1.equals(word2)) continue;
+                if (word1.contains(word2)) {
+                    inDegree.put(word2, inDegree.getOrDefault(word2, 0) + 1);
+                }
+                if (word2.contains(word1)) {
+                    inDegree.put(word1, inDegree.getOrDefault(word1, 0) + 1);
+                }
+            }
+        }
+        for (String word: inputWithDuplicates) {
+            if (!inDegree.containsKey(word)) {
+                input.add(word);
+            }
+        }
+
+        String[] arr = new String[input.size()];
+        input.toArray(arr);
+        return arr;
+    }
+
+    public static class Tuple implements Comparable<Tuple> {
+        private String sequence;
+        private boolean[] set;
+        private int setCount;
+
+        public Tuple(String sequence, boolean[] set, int setCount) {
+            this.sequence = sequence;
+            this.set = set;
+            this.setCount = setCount;
+        }
+
+        private void update(Map<String, Integer> strToIndex) {
+            int lb = Math.max(0, sequence.length() - 5);
+            for (int i = sequence.length() - 2; i >= lb; i--) {
+                int idx = strToIndex.getOrDefault(sequence.substring(i), -1);
+                if (idx != -1) {
+                    if (!set[idx]) {
+                        ++setCount;
+                        set[idx] = true;
+                        return;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public int compareTo(Tuple pair) {
+            return -setCount + pair.setCount;
+        }
+    }
+
+    private class Optimizer {
+        private String solution;
+        private boolean found;
+
+        private Optimizer(String solution) {
+            this.solution = solution;
+            this.found = false;
+        }
+
+        private String optimize(String[] input, long start) {
+            while (System.currentTimeMillis() - start < OPTIMIZER_TIME) {
+                found = false;
+
+                for (int i = 0; i < solution.length(); i++) {
+                    tryRemoveIndex(input, solution, i);
+                }
+
+                if (!found) {
+                    break;
+                }
+            }
+            return solution;
+        }
+
+        private void tryRemoveIndex(String[] input, String inputSolution, int index) {
+            String candidateSolution = inputSolution.substring(0, index) + inputSolution.substring(index + 1);
+            for (String word: input) {
+                if (!candidateSolution.contains(word)) return;
+            }
+            found = true;
+            solution = candidateSolution;
+        }
+    }
+}

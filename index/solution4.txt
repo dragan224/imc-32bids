@@ -1,0 +1,136 @@
+// 75.4
+package index;
+
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
+
+public class WorldIndex {
+
+    private static final long GENERATION_TIME = 4960;
+
+    class Pair {
+        public Pair(String solution, boolean[] set) {
+            this.solution = solution;
+            this.set = set;
+        }
+
+        String solution;
+        boolean[] set;
+    }
+
+    public String makeName(List<String> inputWithDuplicates) {
+        long start = System.currentTimeMillis();
+        String[] input = cleanInput(inputWithDuplicates);
+        List<Pair> solutions = new ArrayList<>();
+        solutions.add(new Pair("", new boolean[input.length]));
+
+        int to_keep = 100;
+        for (int iter = 0; iter < input.length; iter++) {
+            List<Pair> newSolutions = new ArrayList<>();
+            for (int i = 0; i < input.length; i++) {
+                String word = input[i];
+                for (Pair solution: solutions) {
+                    if (solution.set[i]) continue;
+                    boolean[] set = Arrays.copyOf(solution.set, solution.set.length);
+                    set[i] = true;
+
+                    String sol = solution.solution + getWord(solution.solution, word);
+                    newSolutions.add(new Pair(sol, set));
+                }
+            }
+
+            Collections.sort(newSolutions, new Comparator<Pair>() {
+                @Override
+                public int compare(Pair s, Pair t1) {
+                    return s.solution.length() - t1.solution.length();
+                }
+            });
+            solutions = newSolutions.subList(0, Math.min(newSolutions.size(), to_keep));
+
+            if (to_keep < newSolutions.size()) {
+                for (int i = 0; i < to_keep / 2; i++) {
+                    int idx = ThreadLocalRandom.current().nextInt(to_keep, newSolutions.size());
+                    solutions.add(newSolutions.get(idx));
+                }
+            }
+        }
+
+        String bestSolution = solutions.get(0).solution;
+        for (Pair solution: solutions) {
+            String candidateSolution = optimize(input, solution.solution, start);
+            if (candidateSolution.length() < bestSolution.length()) {
+                bestSolution = candidateSolution;
+            }
+        }
+
+        return bestSolution;
+    }
+
+    private String[] cleanInput(List<String> inputWithDuplicates) {
+        Set<String> inputWithoutDuplicates = new HashSet<>(inputWithDuplicates);
+        Set<String> input = new HashSet<>();
+        Map<String, Integer> inDegree = new HashMap<>();
+        for (String word1: inputWithoutDuplicates) {
+            for (String word2: inputWithDuplicates) {
+                if (word1.equals(word2)) continue;
+                if (word1.contains(word2)) {
+                    inDegree.put(word2, inDegree.getOrDefault(word2, 0) + 1);
+                }
+                if (word2.contains(word1)) {
+                    inDegree.put(word1, inDegree.getOrDefault(word1, 0) + 1);
+                }
+            }
+        }
+        for (String word: inputWithDuplicates) {
+            if (!inDegree.containsKey(word)) {
+                input.add(word);
+            }
+        }
+
+        String[] arr = new String[input.size()];
+        input.toArray(arr);
+        return arr;
+    }
+
+
+    private String getWord(String sb, String word) {
+        if (sb.contains(word)) return "";
+
+        int prefix = 0;
+        for (int i = 1; i <= Math.min(word.length(), sb.length()); i++) {
+            if (sb.substring(sb.length() - i).equals(word.substring(0, i))) {
+                prefix = i;
+            }
+        }
+
+        return word.substring(prefix);
+    }
+
+    private boolean isValid(String[] input, String solution) {
+        for (String word: input) {
+            if (!solution.contains(word)) return false;
+        }
+        return true;
+    }
+
+    private String optimize(String[] input, String solution, long start) {
+        while (System.currentTimeMillis() - start < GENERATION_TIME) {
+            boolean found = false;
+
+            for (int len = 3; len >= 1; len--) {
+                for (int i = 0; i < solution.length() - len + 1; i++) {
+                    String candidateSolution = solution.substring(0, i) + solution.substring(i + len);
+                    if (isValid(input, candidateSolution)) {
+                        solution = candidateSolution;
+                        found = true;
+                    }
+                }
+            }
+
+            if (!found) {
+                break;
+            }
+        }
+        return solution;
+    }
+}
